@@ -5,6 +5,8 @@ import { Title } from '@angular/platform-browser';
 import { Book } from "app/models/book";
 import { Reader } from "app/models/reader";
 import { DataService } from 'app/core/data.service';
+import { BookTrackerError } from 'app/models/bookTrackerError';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-dashboard',
@@ -18,10 +20,15 @@ export class DashboardComponent implements OnInit {
   mostPopularBook: Book;
 
   constructor(private dataService: DataService,
-              private title: Title) { }
-  
+              private title: Title, private route: ActivatedRoute) { }
+
   ngOnInit() {
-    this.allBooks = this.dataService.getAllBooks();
+    let resolvedData: Book[] | BookTrackerError = this.route.snapshot.data['resolvedBooks'];
+    if(resolvedData instanceof BookTrackerError) {
+      console.log(`Dashboard component error: ${resolvedData.friendlyMessage}`);
+    } else {
+      this.allBooks = resolvedData;
+    }
     this.allReaders = this.dataService.getAllReaders();
     this.mostPopularBook = this.dataService.mostPopularBook;
 
@@ -29,7 +36,14 @@ export class DashboardComponent implements OnInit {
   }
 
   deleteBook(bookID: number): void {
-    console.warn(`Delete book not yet implemented (bookID: ${bookID}).`);
+    this.dataService.deleteBook(bookID).subscribe(
+      () => {
+        let index: number = this.allBooks.findIndex(book => book.bookID === bookID);
+        this.allBooks.splice(index);
+        console.log('delete book successfully');
+      },
+      (error: BookTrackerError) => console.log('error deleting book', JSON.stringify(error))
+    )
   }
 
   deleteReader(readerID: number): void {
